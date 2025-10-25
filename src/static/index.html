@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mergington High School Activities</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      :root{
+        --bg:#f4f7fb; --card:#ffffff; --muted:#6b7280; --accent:#2563eb;
+        --shadow: 0 6px 18px rgba(31,41,55,0.08);
+      }
+      body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); margin:0; color:#111;}
+      header{padding:28px 40px; display:flex; align-items:center; gap:16px;}
+      h1{margin:0; font-size:20px;}
+      .container{padding:0 40px 60px; max-width:1100px; margin:0 auto;}
+      .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:20px;}
+      .card{background:var(--card); border-radius:12px; padding:18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;}
+      .meta{font-size:13px; color:var(--muted);}
+      .title{display:flex; justify-content:space-between; align-items:center;}
+      .badge{background:linear-gradient(90deg,#eef2ff,#fff); color:var(--accent); border-radius:999px; padding:6px 10px; font-weight:600; font-size:12px; box-shadow:inset 0 -1px 0 rgba(0,0,0,0.02);}
+      .participants{margin-top:8px;}
+      ul.part-list{list-style:disc; margin:8px 0 0 18px; padding:0; color:#111;}
+      ul.part-list li{margin:6px 0; display:flex; align-items:center; gap:10px; font-size:14px;}
+      .avatar{width:28px; height:28px; border-radius:50%; display:inline-grid; place-items:center; font-weight:700; color:#fff; background:linear-gradient(120deg,#60a5fa,#2563eb);}
+      .empty{color:var(--muted); font-style:italic;}
+      footer{padding:24px 40px; color:var(--muted); font-size:13px;}
+      @media (max-width:520px){header{padding:18px}; .container{padding:0 18px 40px}}
+    </style>
   </head>
   <body>
     <header>
@@ -13,38 +35,67 @@
     </header>
 
     <main>
-      <section id="activities-container">
-        <h3>Available Activities</h3>
-        <div id="activities-list">
-          <!-- Activities will be loaded here -->
-          <p>Loading activities...</p>
+      <div class="container">
+        <div id="cards" class="grid">
+          <!-- Cards will be injected here -->
         </div>
-      </section>
-
-      <section id="signup-container">
-        <h3>Sign Up for an Activity</h3>
-        <form id="signup-form">
-          <div class="form-group">
-            <label for="email">Student Email:</label>
-            <input type="email" id="email" required placeholder="your-email@mergington.edu" />
-          </div>
-          <div class="form-group">
-            <label for="activity">Select Activity:</label>
-            <select id="activity" required>
-              <option value="">-- Select an activity --</option>
-              <!-- Activity options will be loaded here -->
-            </select>
-          </div>
-          <button type="submit">Sign Up</button>
-        </form>
-        <div id="message" class="hidden"></div>
-      </section>
+      </div>
     </main>
 
     <footer>
       <p>&copy; 2023 Mergington High School</p>
+      <p>Tip: click "Sign up" from the API (this simple UI is read-only). Data updates are reflected here.</p>
     </footer>
 
-    <script src="app.js"></script>
+    <script>
+      async function loadActivities(){
+        try{
+          const res = await fetch('/activities');
+          if(!res.ok) throw new Error('Failed to load activities');
+          const data = await res.json();
+          const container = document.getElementById('cards');
+          container.innerHTML = '';
+          Object.entries(data).forEach(([name, activity])=>{
+            const card = document.createElement('div');
+            card.className = 'card';
+            // Build participants list HTML
+            const participants = Array.isArray(activity.participants) ? activity.participants : [];
+            const partHtml = participants.length
+              ? '<ul class="part-list">' + participants.map(email=>{
+                  const initial = (email && email[0]) ? email[0].toUpperCase() : '?';
+                  return `<li><span class="avatar">${initial}</span>${escapeHtml(email)}</li>`;
+                }).join('') + '</ul>'
+              : '<div class="empty">No participants yet</div>';
+
+            card.innerHTML = `
+              <div class="title">
+                <div>
+                  <strong>${escapeHtml(name)}</strong>
+                  <div class="meta">${escapeHtml(activity.description)}</div>
+                </div>
+                <div class="badge">${escapeHtml(activity.schedule)}</div>
+              </div>
+
+              <div class="meta">Capacity: ${escapeHtml(String(activity.max_participants))}</div>
+
+              <div class="participants">
+                <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600">Participants</div>
+                ${partHtml}
+              </div>
+            `;
+            container.appendChild(card);
+          });
+        }catch(err){
+          document.getElementById('cards').innerHTML = '<div style="color:#c53030">Unable to load activities</div>';
+          console.error(err);
+        }
+      }
+
+      function escapeHtml(s){
+        return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+      }
+
+      window.addEventListener('DOMContentLoaded', loadActivities);
+    </script>
   </body>
 </html>
